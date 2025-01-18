@@ -1,14 +1,8 @@
 [package]
 name = "spreadsheet-techdemo"
 version = "0.1.0"
-authors = ["Gerd Zellweger <gz@feldera.com>"]
 edition = "2021"
 include = ["LICENSE-APACHE", "LICENSE-MIT", "**/*.rs", "Cargo.toml"]
-rust-version = "1.76"
-
-[package.metadata.docs.rs]
-all-features = true
-targets = ["wasm32-unknown-unknown"]
 
 [dependencies]
 slint = { version = "1.9.2", features = ["serde"] }
@@ -29,5 +23,3 @@ wasm-logger = "0.2.0"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.70", features = ["console"] }
 
-
-[workspace]
