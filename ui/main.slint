@@ -1,0 +1,184 @@
+import { AboutSlint, VerticalBox, Palette, Button, StandardButton, ScrollView } from "std-widgets.slint";
+import { TableView, CellContent } from "tableview.slint";
+import { Help } from "reference.slint";
+import { ColorPicker } from "color-picker.slint";
+
+
+@rust-attr(derive(serde::Deserialize))
+export struct Stats {
+    filled_total: int,
+    filled_this_hour: int,
+    filled_today: int,
+    filled_this_week: int,
+    currently_active_users: int,
+}
+
+
+
+export component MainWindow inherits Window {
+    in property <Stats> stats;
+    in property <int> max_cells: 1000000000;
+    in property <[[CellContent]]> cells;
+    callback update-cell <=> tv.update-cell;
+    callback open-url(string);
+    in property <[TableColumn]> columns <=> tv.columns;
+    property <color> current-color;
+
+    VerticalBox {
+        GridLayout {
+            Text {
+                colspan: 2;
+                text: "Billon Cell Spreadsheet";
+                font-size: 1.5rem;
+            }
+
+            StandardButton {
+                col: 2;
+                kind: StandardButtonKind.help;
+                clicked => {
+                    current-color = cells[tv.current-row][tv.current-col].background;
+                    help-popup.show();
+                }
+            }
+
+            HorizontalLayout {
+                row: 2;
+                colspan: 3;
+                spacing: 0.75rem;
+                VerticalLayout {
+                    spacing: 0.25rem;
+                    alignment: start;
+                    Text {
+                        text: "Currently Active Users:";
+                    }
+
+                    HorizontalLayout {
+                        alignment: start;
+                        spacing: 0.25rem;
+                        for _ in root.stats.currently_active_users.min(10): Rectangle {
+                            width: 1rem;
+                            height: 1rem;
+                            border-radius: self.width / 2;
+                            background: lightgreen;
+                        }
+                        if root.stats.currently_active_users > 10: Text {
+                            text: "+" + (root.stats.currently_active_users - 10) + " more";
+                        }
+                    }
+                }
+
+                Rectangle {
+                    background: Palette.border;
+                    width: 1px;
+                }
+
+                Text {
+                    text: "Cells With Content:\n" + root.stats.filled_total + "/" + root.max_cells + "\n" + (root.stats.filled_total / root.max_cells) + "%";
+                }
+
+                Rectangle {
+                    background: Palette.border;
+                    width: 1px;
+                }
+
+                Text {
+                    text: "Cells Edited This Hour: " + root.stats.filled_this_hour;
+                }
+
+                Rectangle {
+                    background: Palette.border;
+                    width: 1px;
+                }
+
+                Text {
+                    text: "Cells Edited Today: " + root.stats.filled_today;
+                }
+
+                Rectangle {
+                    background: Palette.border;
+                    width: 1px;
+                }
+
+                Text {
+                    text: "Cells Edited This Week: " + root.stats.filled_this_week;
+                }
+            }
+
+            TouchArea {
+                row: 0;
+                col: 3;
+                rowspan: 4;
+                vertical-stretch: 0;
+                horizontal-stretch: 0;
+                preferred-height: 0;
+                clicked => {
+                    open-url("https://slint.dev");
+                }
+                mouse-cursor: pointer;
+                AboutSlint { }
+            }
+
+            Rectangle { }
+
+            Button {
+                row: 3;
+                text: "Set Background Color";
+                clicked => {
+                    color-picker.show();
+                }
+            }
+        }
+
+        tv := TableView {
+            columns: [
+                { title: "A", min-width: 30px, width: 100px },
+                { title: "B", min-width: 30px, width: 100px },
+                { title: "C", min-width: 30px, width: 100px },
+            ];
+            cells: root.cells;
+        }
+    }
+
+    help-popup := PopupWindow {
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Palette.background;
+            border-color: Palette.border;
+            border-width: 1px;
+        }
+
+        width: help.preferred-width;
+        height: root.height - 5rem;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+
+        ScrollView {
+            help := VerticalBox {
+                Help { }
+            }
+        }
+    }
+
+    color-picker := PopupWindow {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        height: cp.preferred-height;
+        width: cp.preferred-width;
+        close-policy: close-on-click-outside;
+        cp := ColorPicker {
+            original-color: current-color;
+            accepted(color) => {
+                update-color(cells[tv.current-row][tv.current-col], color);
+                color-picker.close();
+            }
+            function update-color(cell: CellContent, color: color) {
+                update-cell({
+                    id-low: cell.id-low,
+                    id-high: cell.id-high,
+                    raw-value: cell.raw-value,
+                    background: color,
+                })
+            }
+        }
+    }
+}

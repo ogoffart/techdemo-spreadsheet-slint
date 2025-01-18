@@ -1,0 +1,112 @@
+import { VerticalBox, Palette } from "std-widgets.slint";
+component CollapsingHeader inherits Rectangle {
+    in property <string> title;
+    in-out property <bool> open;
+    VerticalLayout {
+        Text {
+            text: (open ? "▼" : "▶") + " " + title;
+            color: ta.has-hover ? Palette.foreground : Palette.alternate-foreground;
+            ta := TouchArea {
+                clicked => {
+                    open = !open;
+                }
+            }
+        }
+
+        contents := Rectangle {
+            clip: true;
+            height: open ? vl.preferred-height : 0px;
+            animate height {
+                duration: 75ms;
+                easing: ease-out;
+            }
+            HorizontalLayout {
+                padding: 2px;
+                spacing: 2px;
+                Rectangle {
+                    width: 1px;
+                    background: Palette.border;
+                }
+
+                vl := VerticalBox {
+                    @children
+                }
+            }
+        }
+    }
+}
+
+export component Help {
+    VerticalBox {
+        alignment: start;
+        Text {
+            text: "Formula Help";
+            font-size: 1.5rem;
+        }
+
+        CollapsingHeader {
+            title: "Features";
+            Text {
+                text: "The formula engine support:\n• Any numbers, negative and positive, as float or integer.\n• Arithmetic operations: +, -, /, *, ^\n• Logical operations: AND(), OR(), NOT(), XOR().\n• Comparison operations: =, >, >=, <, <=, <>.\n• String operation: & (concatenation).\n• Built-in variables: TRUE, FALSE.\n• Excel functions: ABS(), SUM(), PRODUCT(), AVERAGE(), RIGHT(), LEFT(), IF(), ISBLANK().\n• Operations on lists of values (one-dimensional range).\n• Add or subtract dates and Excel function DAYS().\n• Custom functions with number arguments.";
+            }
+        }
+
+        CollapsingHeader {
+            title: "Examples";
+            CollapsingHeader {
+                title: "Parsing and Evaluating Formulas";
+                Text {
+                    text: "=1+2\n=(1*(2+3))*2\n=1+3/0";
+                }
+            }
+
+            CollapsingHeader {
+                title: "Concatenating Strings";
+                Text {
+                    text: "=\"Hello \" & \" World!\"";
+                }
+
+                Text {
+                    text: "• Concatenating number and string results in a #CAST! error.";
+                }
+            }
+
+            CollapsingHeader {
+                title: "Excel Functions";
+                Text {
+                    text: "=ABS(-1)\n=SUM(1,2,\"3\")\n=PRODUCT(ABS(1),2*1, 3,4*1)\n=RIGHT(\"apple\", 3)\n=LEFT(\"apple\", 3)\n=LEFT(\"apple\")\n=IF(TRUE,1,0)";
+                }
+            }
+
+            CollapsingHeader {
+                title: "Working with Lists";
+                Text {
+                    text: "={1,2,3}+{1,2,3}";
+                }
+            }
+        }
+
+        CollapsingHeader {
+            title: "Logical Expressions";
+            Text {
+                text: "Supports logical expressions like AND(), OR(), and more:\n=2>=1\n=OR(1>1,1<>1)\n=AND(\"test\",\"True\", 1, true)";
+            }
+        }
+
+        CollapsingHeader {
+            title: "Handling Dates";
+            Text {
+                text: "Supports adding, subtracting, and calculating days between dates:\n• Dates must be written in the RFC 3339: e.g., 2019-03-01T02:00:00.000Z\n=DAYS(A12, A32)";
+            }
+        }
+
+        CollapsingHeader {
+            title: "References";
+            Text {
+                text: "Supports referencing other cells:\n=A12\n• The demo limits the number of allowed references per cell to 1000.";
+            }
+        }
+
+        Rectangle { }
+    }
+}

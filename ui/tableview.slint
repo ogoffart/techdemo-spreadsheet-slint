@@ -1,0 +1,309 @@
+
+
+import { Palette, ListView, LineEdit } from "std-widgets.slint";
+
+
+component TableViewCell inherits Rectangle {
+    clip: true;
+
+    HorizontalLayout {
+        padding-left: 5px;
+        padding-right: 5px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+
+        @children
+    }
+}
+
+component TableViewRow inherits Rectangle {
+    in property <bool> selected;
+    in property <bool> even;
+
+    min-width: i-layout.min-width;
+    height: max(2.75rem, i-layout.min-height);
+    border-radius: 4px;
+    background: root.even ? Palette.control-background : Palette.alternate-background;
+
+    i-layout := HorizontalLayout {
+        @children
+    }
+
+    i-selector := Rectangle {
+        x: 0px;
+        y: (parent.height - self.height) / 2;
+        width: 3px;
+        height: 0px;
+        background: Palette.accent-background;
+        border-radius: 2px;
+
+        animate height {
+            duration: 150ms;
+            easing: ease-out;
+        }
+    }
+}
+
+component Mover inherits Rectangle {
+    width: 1px;
+
+    callback adjust(diff: length);
+
+    background: Palette.border;
+    opacity: 0.5;
+    states [
+        hover when i-movable-touch-area.has-hover: {
+            opacity: 0.9;
+        }
+    ]
+
+    animate opacity { duration: 150ms; }
+
+    i-movable-touch-area := TouchArea {
+        width: 10px;
+        mouse-cursor: ew-resize;
+
+        moved => {
+            if (self.pressed) {
+                adjust(self.mouse-x - self.pressed-x);
+            }
+        }
+    }
+}
+
+export struct CellContent {
+    id_low: int,
+    id_high: int,
+    raw_value: string,
+    computed_value: string,
+    background: color,
+}
+
+export component TableView {
+    in property <[[CellContent]]> cells;
+    out property <int> current-sort-column: -1;
+    in property <[TableColumn]> columns;
+    out property <int> current-row: -1;
+    out property <int> current-col: -1;
+    property <length> row-number-width: 3rem;
+
+    callback update-cell(CellContent);
+
+    private property <length> min-header-height: 42px;
+    private property <length> item-height: i-scroll-view.viewport-height / cells.length;
+    private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
+    private property <bool> editing;
+    min-width: 400px;
+    min-height: 200px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    forward-focus: i-focus-scope;
+    accessible-role: table;
+
+    function set-current-cell(row: int, col: int) {
+        if (row < 0 || row >= cells.length || col < 0 || col >= columns.length) {
+            return;
+        }
+        current-row = row;
+        current-col = col;
+        if (current-item-y < 0) {
+            i-scroll-view.viewport-y += 0 - current-item-y;
+        }
+        if (current-item-y + item-height > i-scroll-view.visible-height) {
+            i-scroll-view.viewport-y -= current-item-y + item-height - i-scroll-view.visible-height;
+        }
+    }
+
+    i-focus-scope := FocusScope {
+
+        key-pressed(event) => {
+            if (event.text == Key.UpArrow) {
+                root.set-current-cell(root.current-row - 1, root.current-col);
+                return accept;
+            } else if (event.text == Key.DownArrow) {
+                root.set-current-cell(root.current-row + 1, root.current-col);
+                return accept;
+            } else if (event.text == Key.LeftArrow) {
+                root.set-current-cell(root.current-row, root.current-col - 1);
+                return accept;
+            } else if (event.text == Key.RightArrow) {
+                root.set-current-cell(root.current-row, root.current-col + 1);
+                return accept;
+            } else if (event.text == Key.Return) {
+                root.editing = true;
+                return accept;
+            }
+            reject
+        }
+    }
+
+    layout := VerticalLayout {
+        Rectangle {
+            clip: true;
+            vertical-stretch: 0;
+            min-height: i-header-layout.min-height;
+
+            i-header-layout := HorizontalLayout {
+                width: max(self.preferred-width, parent.width);
+                x: i-scroll-view.viewport-x;
+                padding-right: 6px;
+                min-height: root.min-header-height;
+
+                Rectangle {
+                    width: row-number-width;
+                }
+
+                for column[index] in root.columns: TableViewCell {
+                    horizontal-stretch: column.horizontal-stretch;
+                    min-width: max(column.min-width, column.width);
+                    preferred-width: self.min-width;
+                    max-width: (index < columns.length && column.width >= 1px) ? max(column.min-width, column.width) : 100000px;
+
+                    Text {
+                        vertical-alignment: center;
+                        text: column.title;
+                        color: Palette.alternate-foreground;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+
+        // border
+        Rectangle {
+            height: 1px;
+            background: Palette.border;
+        }
+
+        i-scroll-view := ListView {
+            for row[idx] in root.cells: tvr := TableViewRow {
+                width: self.min-width;
+                selected: idx == root.current-row;
+                even: mod(idx, 2) == 0;
+
+                TableViewCell {
+                    width: row-number-width;
+                    Text {
+                        width: 100%;
+                        height: 100%;
+                        overflow: elide;
+                        vertical-alignment: center;
+                        color: tvr.even ? Palette.foreground : Palette.alternate-foreground;
+                        text: idx;
+                    }
+
+                    init => {
+                        row-number-width = max(row-number-width, self.preferred-width);
+                    }
+                }
+
+                for cell[index] in row: tvc := TableViewCell {
+                    private property <bool> has_inner_focus: current-col == index && current-row == idx;
+                    horizontal-stretch: root.columns[index].horizontal-stretch;
+                    min-width: max(columns[index].min-width, columns[index].width);
+                    preferred-width: self.min-width;
+                    max-width: (index < columns.length && columns[index].width >= 1px) ? max(columns[index].min-width, columns[index].width) : 100000px;
+                    border-color: Palette.accent-background;
+                    border-width: has_inner_focus ? 1px : 0px;
+
+                    changed has_inner_focus => {
+                        if has_inner_focus {
+                            if (tvc.x < -i-scroll-view.viewport-x) {
+                                i-scroll-view.viewport-x = -tvc.x
+                            } else if (tvc.x + tvc.width > -i-scroll-view.viewport-x + i-scroll-view.visible-width) {
+                                i-scroll-view.viewport-x = -(tvc.x + tvc.width - i-scroll-view.visible-width)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: cell.background;
+                        Text {
+                            visible: !(editing && has_inner_focus);
+                            width: 100%;
+                            height: 100%;
+                            overflow: elide;
+                            vertical-alignment: center;
+                            text: cell.computed-value;
+                            color: tvr.even ? Palette.foreground : Palette.alternate-foreground;
+                        }
+
+                        TouchArea {
+                            double-clicked => {
+                                editing = true;
+                            }
+                            clicked => {
+                                current-col = index;
+                                current-row = idx;
+                                i-focus-scope.focus();
+                            }
+                        }
+
+                        if editing && has_inner_focus: LineEdit {
+                            width: tvc.width;
+                            text: cell.raw-value;
+                            init => {
+                                self.focus();
+                            }
+                            accepted(text) => {
+                                update-cell({
+                                    id-low: cell.id-low,
+                                    id-high: cell.id-high,
+                                    raw-value: text,
+                                    background: cell.background,
+                                });
+                                editing = false;
+                                i-focus-scope.focus();
+                            }
+                            changed has-focus => {
+                                if !self.has-focus {
+                                    update-cell({
+                                        id-low: cell.id-low,
+                                        id-high: cell.id-high,
+                                        raw-value: self.text,
+                                        background: cell.background,
+                                    });
+                                }
+                                editing = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // column separator
+    Rectangle {
+        clip: true;
+        vertical-stretch: 0;
+        HorizontalLayout {
+            width: max(self.preferred-width, parent.width);
+            x: i-scroll-view.viewport-x;
+            padding-right: 6px;
+            min-height: root.min-header-height;
+            Rectangle {
+                width: row-number-width;
+                Mover {
+                    x: parent.width - 1px;
+                    adjust(diff) => {
+                        row-number-width = max(1px, self.x + diff);
+                    }
+                }
+            }
+
+            for column[index] in root.columns: Rectangle {
+                min-width: max(column.min-width, column.width);
+                preferred-width: self.min-width;
+                max-width: (index < columns.length && column.width >= 1px) ? max(column.min-width, column.width) : 100000px;
+
+                Mover {
+                    x: parent.width - 1px;
+                    adjust(diff) => {
+                        column.width = max(1px, self.x + diff);
+                    }
+                }
+            }
+        }
+    }
+}

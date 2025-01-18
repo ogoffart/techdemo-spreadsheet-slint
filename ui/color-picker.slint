@@ -1,0 +1,97 @@
+
+
+import { VerticalBox, Palette, HorizontalBox, SpinBox, GridBox, StandardButton } from "std-widgets.slint";
+export component ColorPicker {
+    in property <color> original-color: #75dfff;
+    out property <color> new-color: Colors.rgba(sp-r.value, sp-g.value, sp-b.value, sp-a.value);
+    callback accepted(color);
+    Rectangle {
+        background: Palette.background;
+        border-width: 1px;
+        border-color: Palette.border;
+    }
+
+    GridBox {
+        Text {
+            colspan: 2;
+            text: "Set Background Color";
+            font-size: 1.5rem;
+        }
+
+        Row {
+            Text {
+                text: "Red";
+                vertical-alignment: center;
+            }
+
+            sp-r := SpinBox {
+                minimum: 0;
+                maximum: 255;
+                value: original-color.red;
+            }
+        }
+
+        Row {
+            Text {
+                text: "Green";
+                vertical-alignment: center;
+            }
+
+            sp-g := SpinBox {
+                minimum: 0;
+                maximum: 255;
+                value: original-color.green;
+            }
+        }
+
+        Row {
+            Text {
+                text: "Blue";
+                vertical-alignment: center;
+            }
+
+            sp-b := SpinBox {
+                minimum: 0;
+                maximum: 255;
+                value: original-color.blue;
+            }
+        }
+
+        Row {
+            Text {
+                text: "Alpha";
+                vertical-alignment: center;
+            }
+
+            sp-a := SpinBox {
+                minimum: 0;
+                maximum: 255;
+                value: original-color.alpha;
+            }
+        }
+
+        Row {
+            Text {
+                text: "Preview";
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                background: new-color;
+            }
+        }
+
+        Row {
+            HorizontalLayout {
+                colspan: 2;
+                alignment: end;
+                StandardButton {
+                    kind: ok;
+                    clicked => {
+                        root.accepted(new-color);
+                    }
+                }
+            }
+        }
+    }
+}
